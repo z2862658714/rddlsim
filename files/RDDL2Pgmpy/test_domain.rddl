@@ -1,0 +1,10 @@
+domain test {
+	
+	types {
+		valve		: object;
+		observer	: object;
+	};
+
+	pvariables {
+	};
+}
