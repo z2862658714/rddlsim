@@ -40,6 +40,6 @@ instance valve_inst {
 	init-state {
 	};
 	max-nondef-actions = 1;
-	horizon = 3;
+	horizon = 4;
 	discount = 1;
 }
