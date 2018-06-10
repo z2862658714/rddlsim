@@ -1,23 +1,19 @@
 domain valve_domain {
-	
-	types {
-		valve	: object;
-		observer	: object;
-	};
 
 	pvariables {
-		state-broken(valve)	: { state-fluent, bool, default = false };
-		prev-state-observed-broken(valve)	: { state-fluent, bool, default = false };
+		state-broken	: { state-fluent, bool, default = false };
+		prev-state-observed-broken	: { state-fluent, bool, default = false };
+		dumb-action	: { action-fluent, bool, default = false };
 	};
 
 	cpfs {
-		state-broken'(?v) = 
-			if (state-broken(?v))
+		state-broken' = 
+			if (state-broken)
 			then true
 			else Bernoulli(0.2);
 
-		pre-state-observed-broken'(?v) = 
-			if (state-broken(?v))
+		pre-state-observed-broken' = 
+			if (state-broken)
 			then true
 			else Bernoulli(0.5);
 	};
@@ -25,21 +21,12 @@ domain valve_domain {
 	reward = 0;
 }
 
-non-fluents np_valve {
-	domain = valve_domain;
-	objects {
-		valve 	: { v0 };
-	};
-	non-fluents {
-	};
-}
-
 instance valve_inst {
 	domain = valve_domain;
-	non-fluents = np_valve;
 	init-state {
+		state-broken';
 	};
 	max-nondef-actions = 1;
-	horizon = 3;
-	discount = 1;
+	horizon = 4;
+	discount = 1.0;
 }
