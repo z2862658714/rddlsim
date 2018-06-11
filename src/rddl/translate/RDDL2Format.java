@@ -622,15 +622,16 @@ public class RDDL2Format {
 			}
 		}
 		pw.println("]);");
+		pw.println();
 		
-		/*// Observations
+		// Observations
 		if (_alObservVars.size() > 0) {
 			
 			pw.println("\n(observations ");
 			for (String s : _alObservVars)
 				pw.println("\t(" + s.substring(0,s.length()-1) + " true false)");
 			pw.println(")");
-		}*/
+		}
 
 		// Initial state
 		if (export_init_block) {
@@ -640,9 +641,7 @@ public class RDDL2Format {
 				init_state_assign.put(CleanFluentName(def._sPredName.toString() + def._alTerms),
 						(Boolean)def._oValue);
 			}
-			pw.println("\ninit [*");
 			for (String s : _alStateVars) {
-				
 				Boolean bval = init_state_assign.get(s);
 				if (bval == null) { // No assignment, get default value
 					// This is a quick fix... a bit ugly
@@ -650,12 +649,12 @@ public class RDDL2Format {
 					bval = (Boolean)_state.getDefaultValue(p);
 				}
 				if (bval)
-					pw.println("\t(" + s + " (true (1.0)) (false (0.0)))");
+					pw.println("cpd_" + s + "_0 = TabularCPD (\'" + s + "\', 2, [[0.0], [1.0]]);");
 				else
-					pw.println("\t(" + s + " (true (0.0)) (false (1.0)))");
+					pw.println("cpd_" + s + "_0 = TabularCPD (\'" + s + "\', 2, [[1.0], [0.0]]);");
 			}
-			pw.println("]");
 		}
+		pw.println();
 
 		// Actions
 		if (allow_conc) {
