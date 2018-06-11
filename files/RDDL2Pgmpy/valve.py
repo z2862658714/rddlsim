@@ -1,9 +1,7 @@
-import os;
 import numpy as np;
 from pgmpy.models import BayesianModel;
 from pgmpy.factors.discrete import TabularCPD;
 from pgmpy.inference import VariableElimination;
-
 
 exec(open('./valve_model.txt', 'r', encoding = 'utf-8').read());
 
