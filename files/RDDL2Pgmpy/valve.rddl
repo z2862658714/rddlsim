@@ -24,7 +24,8 @@ domain valve_domain {
 instance valve_inst {
 	domain = valve_domain;
 	init-state {
-		state-broken';
+		//state-broken';
+		state-broken = false; // default setting, the inital state is normal
 	};
 	max-nondef-actions = 1;
 	horizon = 4;
