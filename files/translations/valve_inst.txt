@@ -1,0 +1,55 @@
+# Automatically produced by RDDL2Pgmpy
+# Pgmpy Bayesian Model for 'valve_domain.valve_inst'
+# variable_0 => variable = false; variable_1 => variable = true
+
+valve_domain_model = BayesianModel();
+
+valve_domain_model.add_nodes_from(['state_broken_0',
+                                   'prev_state_observed_broken_0',
+                                   'state_broken_1',
+                                   'prev_state_observed_broken_1',
+                                   'state_broken_2',
+                                   'prev_state_observed_broken_2',
+                                   'state_broken_3',
+                                   'prev_state_observed_broken_3']);
+
+cpd_state_broken_0 = TabularCPD ('state_broken', 2, [[1.0], [0.0]]);
+cpd_prev_state_observed_broken_0 = TabularCPD ('prev_state_observed_broken', 2, [[1.0], [0.0]]);
+
+
+action a
+	state_broken
+		(state_broken 
+			(1.0)
+			(0.2))
+	prev_state_observed_broken
+		(state_broken 
+			(1.0)
+			(0.5))
+endaction
+
+action noop
+	state_broken
+		(state_broken 
+			(1.0)
+			(0.2))
+	prev_state_observed_broken
+		(state_broken 
+			(1.0)
+			(0.5))
+endaction
+
+reward
+	(0.0)
+
+discount 1.0
+horizon 4
+valve_domain_model.add_cpds(cpd_state_broken_0,
+                           cpd_prev_state_observed_broken_0,
+                           cpd_state_broken_1,
+                           cpd_prev_state_observed_broken_1,
+                           cpd_state_broken_2,
+                           cpd_prev_state_observed_broken_2,
+                           cpd_state_broken_3,
+                           cpd_prev_state_observed_broken_3);
+

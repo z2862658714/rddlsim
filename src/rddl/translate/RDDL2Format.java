@@ -591,49 +591,63 @@ public class RDDL2Format {
 	public void exportPgmpy(PrintWriter pw, boolean curr_format, boolean allow_conc, boolean export_init_block) {
 		pw.println("# Automatically produced by RDDL2Pgmpy");
 		pw.println("# Pgmpy Bayesian Model for '" + _d._sDomainName + "." + _i._sName + "'");
+		pw.println("# variable_0 => variable = false; variable_1 => variable = true");
 		pw.println();
+		
+		boolean first;
+		int space_length;
 		
 		String modelName = _d._sDomainName + "_model";
 		pw.println(modelName + " = BayesianModel();");
 		pw.println();
 		
-		// State (and action variables)
+		// State (and action variables) -- finished
 		pw.print(modelName + ".add_nodes_from([");
-		int space_length = (modelName + ".add_nodes_from([").length();
-		boolean first = true;
+		space_length = (modelName + ".add_nodes_from([").length();
+		first = true;
 		for (int h = 0; h < _i._nHorizon; h++) {
 			for (String s : _alStateVars) {
 				if (first) {
-					pw.print("\'" + s + "_" + h + "\',");
+					pw.print("\'" + s + "_" + h + "\'");
 					first = false;
 					continue;
 				}
-				pw.printf("%n%" + space_length + "s\'" + s + "_" + h + "\',", "");
+				pw.printf(",%n%" + space_length + "s\'" + s + "_" + h + "\'", "");
 			}
 			if (allow_conc) {
 				for (String a : _hmActionMap.keySet()) {
 					if (first) {
-						pw.print("\'" + a + "_" + h + "\',\n");
+						pw.print("\'" + a + "_" + h + "\'");
 						first = false;
 						continue;
 					}
-					pw.printf("%n%" + space_length + "s\'" + a + "_" + h + "\',", "");
+					pw.printf(",%n%" + space_length + "s\'" + a + "_" + h + "\'", "");
 				}
 			}
 		}
+		first = false;
 		pw.println("]);");
 		pw.println();
 		
-		// Observations
+		// Observations -- finished
 		if (_alObservVars.size() > 0) {
 			
-			pw.println("\n(observations ");
-			for (String s : _alObservVars)
-				pw.println("\t(" + s.substring(0,s.length()-1) + " true false)");
-			pw.println(")");
+			pw.print("# observations = [");
+			first = true;
+			for (String s : _alObservVars) {
+				if (first) {
+					pw.print("\'" + s.substring(0,s.length()-1) + "\'");
+					first = false;
+					continue;
+				}
+				pw.printf(",%n#%17s\'" + s.substring(0,s.length()-1) + "\'", "");
+			}
+			first = false;
+			pw.println("];");
+			pw.println();
 		}
 
-		// Initial state
+		// Initial state (_0) -- finished
 		if (export_init_block) {
 			HashMap<String,Boolean> init_state_assign = new HashMap<String,Boolean>();
 			for (PVAR_INST_DEF def : _i._alInitState) {	
@@ -673,6 +687,24 @@ public class RDDL2Format {
 		pw.println("\n\ndiscount " + _i._dDiscount);
 		pw.println("horizon " + _i._nHorizon);
 		//pw.println("tolerance 0.00001");
+		
+		// Add CPDs -- finished
+		pw.print(modelName + ".add_cpds(");
+		space_length = (modelName + ".addcpds(").length();
+		first = true;
+		for (int h = 0; h < _i._nHorizon; h++) {
+			for (String s : _alStateVars) {
+				if (first) {
+					pw.print("cpd_" + s + "_" + h + "");
+					first = false;
+					continue;
+				}
+				pw.printf(",%n%" + space_length + "scpd_" + s + "_" + h + "", "");
+			}
+		}
+		first = false;
+		pw.println(");");
+		pw.println();
 	}
 
 	public void buildCPTs() throws Exception {
