@@ -601,7 +601,7 @@ public class RDDL2Format {
 		pw.println(modelName + " = BayesianModel();");
 		pw.println();
 		
-		// State (and action variables) -- finished
+		// State (and action variables) : .add_nodes_from() -- finished
 		pw.print(modelName + ".add_nodes_from([");
 		space_length = (modelName + ".add_nodes_from([").length();
 		first = true;
@@ -629,7 +629,7 @@ public class RDDL2Format {
 		pw.println("]);");
 		pw.println();
 		
-		// Observations -- finished
+		// Observations (not used) -- finished
 		if (_alObservVars.size() > 0) {
 			
 			pw.print("# observations = [");
@@ -646,6 +646,8 @@ public class RDDL2Format {
 			pw.println("];");
 			pw.println();
 		}
+		
+		// Add edges: .add_edges_from()
 
 		// Initial state (_0) -- finished
 		if (export_init_block) {
@@ -670,25 +672,17 @@ public class RDDL2Format {
 		}
 		pw.println();
 
-		// Actions
-		if (allow_conc) {
-			exportSPUDDAction("<no action -- concurrent>", curr_format, pw);
-		} else {
-			for (String action_name : _hmActionMap.keySet()) {		
-				exportSPUDDAction(action_name, curr_format, pw);
-			}
-		}
+		// Actions : TabularCPDs
+/*		if (allow_conc) {
+ *			exportSPUDDAction("<no action -- concurrent>", curr_format, pw);
+ *		} else {
+ *			for (String action_name : _hmActionMap.keySet()) {		
+ *				exportSPUDDAction(action_name, curr_format, pw);
+ *			}
+ *		}
+ */		
 		
-		// Reward -- now zero since all reward is handled in action cost
-		pw.print("\nreward");
-		_context.exportTree(_context.getConstantNode(0d), pw, curr_format, 1);
-		
-		// Discount and tolerance
-		pw.println("\n\ndiscount " + _i._dDiscount);
-		pw.println("horizon " + _i._nHorizon);
-		//pw.println("tolerance 0.00001");
-		
-		// Add CPDs -- finished
+		// Add CPDs : .add_cpds() -- finished
 		pw.print(modelName + ".add_cpds(");
 		space_length = (modelName + ".addcpds(").length();
 		first = true;
