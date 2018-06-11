@@ -4,7 +4,6 @@ from pgmpy.factors.discrete import TabularCPD
 model = BayesianModel([('State_0', 'Observed_0'), 
                        ('State_0', 'State_1'), 
                        ('State_1', 'Observed_1'),
-                       ('State_1', 'Observed_1'),
                        ('State_1', 'State_2'),
                        ('State_2', 'Observed_2')])
 
