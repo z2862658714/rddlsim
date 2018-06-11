@@ -1,31 +1,40 @@
 domain valve_domain {
 
+	requirements { constrained-state };
+
 	pvariables {
 		state-broken	: { state-fluent, bool, default = false };
 		prev-state-observed-broken	: { state-fluent, bool, default = false };
-		dumb-action	: { action-fluent, bool, default = false };
+		nreset	: { action-fluent, bool, default = false };
 	};
 
 	cpfs {
 		state-broken' = 
-			if (state-broken)
-			then true
-			else Bernoulli(0.2);
+			if (nreset)
+			then [if (state-broken)
+				  then true
+				  else Bernoulli(0.2)]
+			else false;
 
-		pre-state-observed-broken' = 
-			if (state-broken)
-			then true
-			else Bernoulli(0.5);
+		prev-state-observed-broken' = 
+			if (nreset)
+			then [if (state-broken)
+				  then true
+				  else Bernoulli(0.5)]
+			else false;
 	};
 
 	reward = 0;
+
+	state-action-constraints {
+		nreset;
+	};
 }
 
 instance valve_inst {
 	domain = valve_domain;
 	init-state {
-		//state-broken';
-		state-broken = false; // default setting, the inital state is normal
+		state-broken = false;
 	};
 	max-nondef-actions = 1;
 	horizon = 4;

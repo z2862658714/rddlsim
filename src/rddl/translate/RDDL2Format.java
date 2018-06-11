@@ -46,6 +46,7 @@ public class RDDL2Format {
 	public final static String SPUDD_CONT      = "spudd_cont".intern();
 	public final static String SPUDD_CONT_CONC = "spudd_cont_conc".intern();
 	public final static String PPDDL           = "ppddl".intern();
+	public final static String Pgmpy           = "pgmpy".intern();
 		
 	public State      _state;
 	public INSTANCE   _i;
@@ -122,7 +123,9 @@ public class RDDL2Format {
 		String separator = (directory.endsWith("\\") || directory.endsWith("/")) ? "" : File.separator;
 		_filename = directory + separator + /*_d._sDomainName + "." +*/ _i._sName;
 		
-		if (_sTranslationType == PPDDL) {
+		if (_sTranslationType == Pgmpy) {
+			_filename = _filename + ".txt";
+		} else if (_sTranslationType == PPDDL) {
 			if (!_d._bPartiallyObserved)
 				_filename = _filename + ".ppddl";
 			else
@@ -172,7 +175,9 @@ public class RDDL2Format {
 		//PrintWriter pw = new PrintWriter(System.out);
 		
 		// Strings interned so can test equality here
-		if (_sTranslationType == SPUDD_ORIG)
+		if (_sTranslationType == Pgmpy)
+			exportPgmpy(pw, false, false);
+		else if (_sTranslationType == SPUDD_ORIG)
 			exportSPUDD(pw, false, false);
 		else if (_sTranslationType == SPUDD_CURR || _sTranslationType == SPUDD_CURR_NOINIT)
 			exportSPUDD(pw, true, false, _sTranslationType == SPUDD_CURR /* export init block? */);
@@ -579,6 +584,98 @@ public class RDDL2Format {
 		pw.println("\t)");
 	}
 	
+	public void exportPgmpy(PrintWriter pw, boolean curr_format, boolean allow_conc) {
+		exportPgmpy(pw, curr_format, allow_conc, true);
+	}
+		
+	public void exportPgmpy(PrintWriter pw, boolean curr_format, boolean allow_conc, boolean export_init_block) {
+		pw.println("# Automatically produced by RDDL2Pgmpy");
+		pw.println("# Pgmpy Bayesian Model for '" + _d._sDomainName + "." + _i._sName + "'");
+		pw.println();
+		
+		String modelName = _d._sDomainName + "_model";
+		pw.println(modelName + " = BayesianModel();");
+		pw.println();
+		
+		// State (and action variables)
+		pw.print(modelName + ".add_nodes_from([");
+		int space_length = (modelName + ".add_nodes_from([").length();
+		boolean first = true;
+		for (int h = 0; h < _i._nHorizon; h++) {
+			for (String s : _alStateVars) {
+				if (first) {
+					pw.print("\'" + s + "_" + h + "\',");
+					first = false;
+					continue;
+				}
+				pw.printf("%n%" + space_length + "s\'" + s + "_" + h + "\',", "");
+			}
+			if (allow_conc) {
+				for (String a : _hmActionMap.keySet()) {
+					if (first) {
+						pw.print("\'" + a + "_" + h + "\',\n");
+						first = false;
+						continue;
+					}
+					pw.printf("%n%" + space_length + "s\'" + a + "_" + h + "\',", "");
+				}
+			}
+		}
+		pw.println("]);");
+		
+		/*// Observations
+		if (_alObservVars.size() > 0) {
+			
+			pw.println("\n(observations ");
+			for (String s : _alObservVars)
+				pw.println("\t(" + s.substring(0,s.length()-1) + " true false)");
+			pw.println(")");
+		}*/
+
+		// Initial state
+		if (export_init_block) {
+			HashMap<String,Boolean> init_state_assign = new HashMap<String,Boolean>();
+			for (PVAR_INST_DEF def : _i._alInitState) {	
+				// Get the assignments for this PVAR
+				init_state_assign.put(CleanFluentName(def._sPredName.toString() + def._alTerms),
+						(Boolean)def._oValue);
+			}
+			pw.println("\ninit [*");
+			for (String s : _alStateVars) {
+				
+				Boolean bval = init_state_assign.get(s);
+				if (bval == null) { // No assignment, get default value
+					// This is a quick fix... a bit ugly
+					PVAR_NAME p = new PVAR_NAME(s.split("__")[0]);
+					bval = (Boolean)_state.getDefaultValue(p);
+				}
+				if (bval)
+					pw.println("\t(" + s + " (true (1.0)) (false (0.0)))");
+				else
+					pw.println("\t(" + s + " (true (0.0)) (false (1.0)))");
+			}
+			pw.println("]");
+		}
+
+		// Actions
+		if (allow_conc) {
+			exportSPUDDAction("<no action -- concurrent>", curr_format, pw);
+		} else {
+			for (String action_name : _hmActionMap.keySet()) {		
+				exportSPUDDAction(action_name, curr_format, pw);
+			}
+		}
+		
+		// Reward -- now zero since all reward is handled in action cost
+		pw.print("\nreward");
+		_context.exportTree(_context.getConstantNode(0d), pw, curr_format, 1);
+		
+		// Discount and tolerance
+		pw.println("\n\ndiscount " + _i._dDiscount);
+		pw.println("horizon " + _i._nHorizon);
+		//pw.println("tolerance 0.00001");
+	}
+
 	public void buildCPTs() throws Exception {
 
 		_var2transDD = new TreeMap<Pair,Integer>();
@@ -1246,7 +1343,8 @@ public class RDDL2Format {
 				arg2_intern != SPUDD_CURR &&
 				arg2_intern != SPUDD_CURR_NOINIT &&
 				arg2_intern != SPUDD_CONC &&
-				arg2_intern != PPDDL ) {
+				arg2_intern != PPDDL &&
+				arg2_intern != Pgmpy) {
 			System.out.println("\nFile format '" + arg2_intern + "' not supported yet.\n");
 			ShowFileFormats();
 			System.exit(2);

@@ -1,0 +1,46 @@
+// Automatically produced by rddl.translate.RDDL2Format
+// SPUDD / Symbolic Perseus Format for 'valve_domain.valve_inst'
+
+(variables 
+	(state_broken true false)
+	(prev_state_observed_broken true false)
+)
+
+init [*
+	(state_broken (true (0.0)) (false (1.0)))
+	(prev_state_observed_broken (true (0.0)) (false (1.0)))
+]
+
+action noop
+	state_broken
+		(state_broken' 
+			(true (0.0))
+			(false (1.0)))
+	prev_state_observed_broken
+		(prev_state_observed_broken' 
+			(true (0.0))
+			(false (1.0)))
+endaction
+
+action nreset
+	state_broken
+		(state_broken 
+			(true (state_broken' 
+				(true (1.0))
+				(false (0.0))))
+			(false (state_broken' 
+				(true (0.2))
+				(false (0.8)))))
+	prev_state_observed_broken
+		(state_broken 
+			(true (prev_state_observed_broken' 
+				(true (1.0))
+				(false (0.0))))
+			(false (0.5)))
+endaction
+
+reward
+	(0.0)
+
+discount 1.0
+horizon 4
