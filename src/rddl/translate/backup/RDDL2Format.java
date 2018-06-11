@@ -21,7 +21,7 @@ import rddl.parser.*;
 import rddl.viz.RDDL2Graph;
 import util.*;
 
-public class RDDL2Pgmpy {
+public class RDDL2Format {
 
 	public final static boolean DEBUG_CPTS = true;
 	public final static boolean SHOW_GRAPH = false;
@@ -84,7 +84,7 @@ public class RDDL2Pgmpy {
 	public static String S;
 	//public static double rewardSum;
 	
-	public RDDL2Pgmpy(RDDL rddl, String instance_name,
+	public RDDL2Format(RDDL rddl, String instance_name,
 			String translation_type, String directory) throws Exception {
 		
 		_sTranslationType = translation_type.toLowerCase().intern();
@@ -192,7 +192,7 @@ public class RDDL2Pgmpy {
 	}
 		
 	public void exportSPUDD(PrintWriter pw, boolean curr_format, boolean allow_conc, boolean export_init_block) {
-		pw.println("// Automatically produced by rddl.translate.RDDL2Pgmpy"/* + " using '" + _sTranslationType + "'"*/);
+		pw.println("// Automatically produced by rddl.translate.RDDL2Format"/* + " using '" + _sTranslationType + "'"*/);
 		pw.println("// SPUDD / Symbolic Perseus Format for '" + _d._sDomainName + "." + _i._sName + "'");
 
 		// State (and action variables)
@@ -351,7 +351,7 @@ public class RDDL2Pgmpy {
 
 	public void exportPPDDL(PrintWriter pw) {
 			// first write domain
-			pw.println(";; Automatically produced by rddl.translate.RDDL2Pg"/* + " using '" + _sTranslationType + "'"*/);
+			pw.println(";; Automatically produced by rddl.translate.RDDL2Format"/* + " using '" + _sTranslationType + "'"*/);
 			pw.println("(define (domain " + _d._sDomainName + ")");
 			// Sungwook: we are using :rewards not :disjunctive-goals.
 			//pw.println("\t(:requirements :adl :probabilistic-effects :disjunctive-goals)");
@@ -1291,7 +1291,7 @@ public class RDDL2Pgmpy {
 				if (!file2rddl.containsKey(f))
 					continue;
 				for (String instance_name : file2rddl.get(f)._tmInstanceNodes.keySet()) {
-					RDDL2Pgmpy r2s = new RDDL2Pgmpy(rddl, instance_name, arg2_intern, output_dir);
+					RDDL2Format r2s = new RDDL2Format(rddl, instance_name, arg2_intern, output_dir);
 					r2s.export();
 				}
 			} catch (Exception e) {
