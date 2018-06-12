@@ -74,6 +74,8 @@ public class RDDL2Format {
 	public TreeMap<Pair, Integer> _var2transDD;
 	public TreeMap<Pair, Integer> _var2observDD;
 	public TreeMap<String, ArrayList<Integer>> _act2rewardDD;
+	
+	public HashMap<String, Pair<List<String>, List<List<Double>>>> _hmCPD;
 
 	//public ArrayList<Integer> _reward;
 	public String _sTranslationType = UNKNOWN;
@@ -645,15 +647,21 @@ public class RDDL2Format {
 			pw.println();
 		}
 		
-		HashMap<String, Pair<List<String>, List<List<Double>>>> _hmCPD = exportPgmpyAction(curr_format, count);
+		// exportPgmpyAction(curr_format, count); -> create data member _hmCPD here 
 		
 		// Add edges: .add_edges_from()
-		/* for (String variable : _hmCPD.keySet()) {
-			for (String evidence : _hmCPD.get(variable).K1) {
-				pw.print edge;
+                pw.println(modelName + ".add_edges_from(["); 
+		for (String variable : _hmCPD.keySet()) {
+			for (String evidence : _hmCPD.get(variable)._o1) {
+				for(int i = 0; i < _i._nHorizon; i++){
+                                    int next = i++;
+                                    if(next != _i._nHorizon){
+                                        pw.println("(\'" + evidence + "_" + i + "\', \'" + variable + "_" + next + "\'),");
+                                    }
+                                }
 			}
-		}*/
-
+		}
+                
 		// Initial state (_0) -- finished
 		if (export_init_block) {
 			HashMap<String,Boolean> init_state_assign = new HashMap<String,Boolean>();
@@ -678,16 +686,32 @@ public class RDDL2Format {
 		}
 
 		// Actions : TabularCPDs
-		/* for (String variable : _hmCPD.keySet()) {
+		 for (String variable : _hmCPD.keySet()) {
 		 	for (int h = 0; h < _i._nHorizon; h++) {
-		 		String cpd = "cpd_" + state_name + "_" + h + " = TabularCPD (\'" + state_name + "_" + h + "\', 2, ";
-		 		cpd += _alProbability to String;
-		 		cpd += _alEvidence to String;
-		 		cpd += [2, 2, ..., 2] <- number of evidences. Each evidence has 2 possible values.
-		 		pw.println(cpd);
+                            int prev = h++; 
+                            if(prev != _i._nHorizon) {
+                                pw.print("cpd_" + variable + "_" + h + " = TabularCPD (\'" + variable + "_" + h + "\', 2, ");
+                                pw.print(_hmCPD.get(variable)._o2); 
+                                
+                                if(_hmCPD.get(variable)._o1 != null){
+                                    String evidence = "["; 
+                                    String eviCard = "["; 
+                                    for(String evid: _hmCPD.get(variable)._o1){
+                                        evidence = evidence + "\'" + evid + "_" + prev + "\', ";
+                                        eviCard = eviCard + "2, ";
+                                    }
+                                    evidence.substring(0, evidence.length() - 2);
+                                    evidence = evidence + "]"; 
+                                    
+                                    eviCard.substring(0, eviCard.length() - 2);
+                                    eviCard = eviCard + "]"; 
+                                    pw.print(", " + evidence + ", " + eviCard);
+                                }
+                                pw.println(");"); 
+                            }
 		 	}
-		 	pw.println();
-		}*/
+                    pw.println(); 
+		}
 		
 		// Add CPDs : .add_cpds() -- finished
 		pw.print(modelName + ".add_cpds(");
@@ -708,18 +732,18 @@ public class RDDL2Format {
 		pw.println();
 	}
 
-	public HashMap<String, Pair<List<String>, List<List<Double>>>> exportPgmpyAction(boolean curr_format, int capacity) {
-		List<String> _alEvidence = new ArrayList<String>(0);
+	public void exportPgmpyAction(boolean curr_format, int capacity) { // HashMap<String, Pair<List<String>, List<List<Double>>>>
+		List<String> _alEvidence = new ArrayList<String>();
 		List<List<Double>> _alProbability = new ArrayList<List<Double>>(2);
 		String state_name = null;
-		HashMap<String, Pair<List<String>, List<List<Double>>>> _hmCPD = new HashMap(capacity);
+		HashMap<String, Pair> _hmCPD = new HashMap(capacity);
 		
 		// reach a ADDDNode
 		// state_name = _hmID2VarName.get(gid)
 		// fill in _alProbability
 		// _hmCPD.put(state_name, new Pair(_alEvidence, _alProbability));
-		
-		return _hmCPD;
+		// _alEvidence.clear()
+		// _alPro
 		
 		// Code for exportSPUDDAction
 		/* pw.println("\naction " + 
@@ -780,7 +804,6 @@ public class RDDL2Format {
 			}
 			pw.println("\tendobserve");
 		}
-
 		// SPUDD example for SysAdmin
 	    //cost [+ (m1 (down (-0.0))
         //        (up (-2.0)))
@@ -791,7 +814,6 @@ public class RDDL2Format {
         //    (m4 (down (-0.0))
         //        (up (-1.0)))
         //    (2.5)]
-
 		// Always show action cost (can be zero)
 		// Reward is now fixed at zero
 		System.out.println(_act2rewardDD.keySet());
@@ -809,6 +831,42 @@ public class RDDL2Format {
 			//}
 		}
 		pw.println("endaction");*/
+	}
+	
+	public void exportTree(int n, PrintWriter ps, boolean label_branches, List _alEvidence, List _alProbability) {
+		exportTree(n, ps, label_branches ? "" : null, 0, _alEvidence, _alProbability);
+	}
+	
+	public void exportTree(int n, PrintWriter ps, boolean label_branches, int level, List _alEvidence, List _alProbability) {
+		exportTree(n, ps, label_branches ? "" : null, level, _alEvidence, _alProbability);
+	}
+	
+	protected void exportTree(int n, PrintWriter ps, String branch_label, int level, List _alEvidence, List _alProbability) {
+
+		ADDNode cur = _context.getNode(n);
+
+		if (cur instanceof ADDINode) {
+			ADDINode i = (ADDINode) cur;
+			ps.print("\n" + tab(level) + 
+					(branch_label != null && branch_label.length() > 0 ? "(" + branch_label + " " : "") + 
+					"(" + _context._hmID2VarName.get(i._nTestVarID) + " ");
+			exportTree(i._nHigh, ps, branch_label != null ? "true" : null, level + 1);
+			exportTree(i._nLow, ps, branch_label != null ? "false" : null, level + 1);
+			ps.print(branch_label != null && branch_label.length() > 0 ? "))" : ")");
+		} else {
+			ADDDNode d = (ADDDNode) cur;
+			ps.print("\n" + tab(level));
+			ps.print((branch_label != null && branch_label.length() > 0 ? "(" + branch_label + " " : ""));
+			ps.print("(" + d._dLower + ")");
+			ps.print(branch_label != null && branch_label.length() > 0 ? ")" : "");
+		}
+	}
+
+	public String tab(int len) {
+		StringBuffer sb = new StringBuffer();
+		for (int i = 0; i < len; i++, sb.append("\t"))
+			;
+		return sb.toString();
 	}
 	
 	public void buildCPTs() throws Exception {
