@@ -75,7 +75,7 @@ public class RDDL2Format {
 	public TreeMap<Pair, Integer> _var2observDD;
 	public TreeMap<String, ArrayList<Integer>> _act2rewardDD;
 	
-	public HashMap<String, Pair<List<String>, List<List<Double>>>> _hmCPD;
+	public HashMap<String, Pair<ArrayList<String>, ArrayList<List<Double>>>> _hmCPD;
 
 	//public ArrayList<Integer> _reward;
 	public String _sTranslationType = UNKNOWN;
@@ -600,8 +600,9 @@ public class RDDL2Format {
 		pw.println("# variable_0 => variable = false; variable_1 => variable = true");
 		pw.println();
 		
+		_hmCPD = new HashMap<String, Pair<ArrayList<String>, ArrayList<List<Double>>>>();
+		
 		boolean first;
-		int count;
 		int space_length;
 		
 		String modelName = _d._sDomainName + "_model";
@@ -612,17 +613,14 @@ public class RDDL2Format {
 		pw.print(modelName + ".add_nodes_from([");
 		space_length = (modelName + ".add_nodes_from([").length();
 		first = true;
-		count = 0;
 		for (int h = 0; h < _i._nHorizon; h++) {
 			for (String s : _alStateVars) {
 				if (first) {
 					pw.print("\'" + s + "_" + h + "\'");
 					first = false;
-					count ++;
 					continue;
 				}
 				pw.printf(",%n%" + space_length + "s\'" + s + "_" + h + "\'", "");
-				count++;
 			}
 		}
 		first = false;
@@ -647,20 +645,27 @@ public class RDDL2Format {
 			pw.println();
 		}
 		
-		// exportPgmpyAction(curr_format, count); -> create data member _hmCPD here 
+		exportPgmpyAction("a", curr_format); //-> create data member _hmCPD here 
 		
 		// Add edges: .add_edges_from()
-                pw.println(modelName + ".add_edges_from(["); 
+        pw.print(modelName + ".add_edges_from(["); 
+        first = true;
 		for (String variable : _hmCPD.keySet()) {
 			for (String evidence : _hmCPD.get(variable)._o1) {
-				for(int i = 0; i < _i._nHorizon; i++){
-                                    int next = i++;
-                                    if(next != _i._nHorizon){
-                                        pw.println("(\'" + evidence + "_" + i + "\', \'" + variable + "_" + next + "\'),");
-                                    }
-                                }
+				for(int i = 0; i < _i._nHorizon - 1; i++){
+					int next = i + 1;
+                	if (first) {
+                		pw.print("(\'" + evidence + "_" + i + "\', \'" + variable + "_" + next + "\')");
+                		first = false;
+                		continue;
+                	}
+                	pw.printf(",%n(\'" + evidence + "_" + i + "\', \'" + variable + "_" + next + "\')");
+				}
 			}
 		}
+		first = false;
+		pw.println("];");
+		pw.println();
                 
 		// Initial state (_0) -- finished
 		if (export_init_block) {
@@ -686,31 +691,33 @@ public class RDDL2Format {
 		}
 
 		// Actions : TabularCPDs
-		 for (String variable : _hmCPD.keySet()) {
-		 	for (int h = 0; h < _i._nHorizon; h++) {
-                            int prev = h++; 
-                            if(prev != _i._nHorizon) {
-                                pw.print("cpd_" + variable + "_" + h + " = TabularCPD (\'" + variable + "_" + h + "\', 2, ");
-                                pw.print(_hmCPD.get(variable)._o2); 
-                                
-                                if(_hmCPD.get(variable)._o1 != null){
-                                    String evidence = "["; 
-                                    String eviCard = "["; 
-                                    for(String evid: _hmCPD.get(variable)._o1){
-                                        evidence = evidence + "\'" + evid + "_" + prev + "\', ";
-                                        eviCard = eviCard + "2, ";
-                                    }
-                                    evidence.substring(0, evidence.length() - 2);
-                                    evidence = evidence + "]"; 
-                                    
-                                    eviCard.substring(0, eviCard.length() - 2);
-                                    eviCard = eviCard + "]"; 
-                                    pw.print(", " + evidence + ", " + eviCard);
-                                }
-                                pw.println(");"); 
-                            }
-		 	}
-                    pw.println(); 
+		for (String variable : _hmCPD.keySet()) {
+			for (int h = 1; h < _i._nHorizon; h++) {
+				int prev = h - 1; 
+				pw.print("cpd_" + variable + "_" + h + " = TabularCPD (\'" + variable + "_" + h + "\', 2, ");
+				pw.print(_hmCPD.get(variable)._o2); 
+				if(_hmCPD.get(variable)._o1 != null){
+					String evidence = "["; 
+					String eviCard = "["; 
+					first = true;
+					for(String evid : _hmCPD.get(variable)._o1){
+						if (first) {
+							evidence += "\'" + evid + "_" + prev + "\'";
+							eviCard = eviCard + "2";
+							first = false;
+							continue;
+						}
+						evidence += ", \'" + evid + "_" + prev + "\'";
+						eviCard = eviCard + ", 2";
+					}
+					first = false;
+					evidence += "]";
+					eviCard += "]";
+					pw.print(", " + evidence + ", " + eviCard);
+				}
+				pw.println(");"); 
+			}
+			pw.println(); 
 		}
 		
 		// Add CPDs : .add_cpds() -- finished
@@ -732,11 +739,9 @@ public class RDDL2Format {
 		pw.println();
 	}
 
-	public void exportPgmpyAction(String action_name, boolean curr_format, int capacity) { // HashMap<String, Pair<List<String>, List<List<Double>>>>
-		ArrayList<String> _alEvidence = new ArrayList<String>();
-		ArrayList<Integer> _alEvidenceStatus = new ArrayList<Integer>();
-		ArrayList<List<Double>> _alProbability = new ArrayList<List<Double>>(2);
-		String state_name = null;
+	public void exportPgmpyAction(String action_name, boolean curr_format) { 
+			// HashMap<String, Pair<List<String>, List<List<Double>>>>
+		String state_name;
 		
 		// reach a ADDDNode
 		// state_name = _hmID2VarName.get(gid)
@@ -748,6 +753,13 @@ public class RDDL2Format {
 		// Code for exportSPUDDAction
 		for (String s : _alStateVars) {
 			state_name = s;
+			ArrayList<String> _alEvidence = new ArrayList<String>();
+			ArrayList<Integer> _alEvidenceStatus = new ArrayList<Integer>();
+			List<Double> _alProbabilityFalse = new ArrayList<Double>();
+			List<Double> _alProbabilityTrue = new ArrayList<Double>();
+			ArrayList<List<Double>> _alProbability = new ArrayList<List<Double>>();
+			_alProbability.add(_alProbabilityFalse);
+			_alProbability.add(_alProbabilityTrue);
 			// Build both halves of dual action diagram if curr_format
 			// System.out.println("Getting: " + action_name + ", " + s);
 			int dd = _var2transDD.get(new Pair(action_name, s));
@@ -769,12 +781,15 @@ public class RDDL2Format {
 				// Replace original DD with "dual action diagram" DD
 				dd = _context.applyInt(dd_true, dd_false, ADD.ARITH_SUM);
 			}
-			
 			exportTree(dd, curr_format, 2, _alEvidence, _alEvidenceStatus, _alProbability);
+			_hmCPD.put(state_name, new Pair(_alEvidence, _alProbability));
 		}
 		if (_alObservVars.size() > 0) {
 			for (String o : _alObservVars) {
-				
+				state_name = o;
+				ArrayList<String> _alEvidence = new ArrayList<String>();
+				ArrayList<Integer> _alEvidenceStatus = new ArrayList<Integer>();
+				ArrayList<List<Double>> _alProbability = new ArrayList<List<Double>>(2);
 				Integer dd = _var2observDD.get(new Pair(action_name, o));
 				if (curr_format) {
 					//dd = _context.remapGIDsInt(dd, _hmPrimeRemap);
@@ -797,10 +812,10 @@ public class RDDL2Format {
 		}
 	}
 	
-	public int probabilityIndex (int[] status, int length) {
+	public int probabilityIndex (ArrayList<Integer> status) {
 		int result = 0;
-		for (int i = 0; i < status.length; i++) {
-			result += status[i] * Math.pow(2, i);
+		for (int i = 0; i < status.size(); i++) {
+			result += status.get(i) * Math.pow(2, i);
 		}
 		return result;
 	}
@@ -825,7 +840,8 @@ public class RDDL2Format {
 			// ps.print("\n" + tab(level) + 
 			//		(branch_label != null && branch_label.length() > 0 ? "(" + branch_label + " " : "") + 
 			//		"(" + _context._hmID2VarName.get(i._nTestVarID) + " ");
-			_alEvidence.add((String) _context._hmID2VarName.get(i._nTestVarID));
+			if (((String)_context._hmID2VarName.get(i._nTestVarID)).endsWith("\'"))
+				_alEvidence.add((String) _context._hmID2VarName.get(i._nTestVarID));
 			@SuppressWarnings("unchecked")
 			ArrayList<Integer> _alEvidenceTrue = (ArrayList<Integer>) _alEvidenceStatus.clone();
 			_alEvidenceTrue.add((Integer) 1);
@@ -837,6 +853,22 @@ public class RDDL2Format {
 			// ps.print(branch_label != null && branch_label.length() > 0 ? "))" : ")");
 		} else {
 			ADDDNode d = (ADDDNode) cur;
+			if (branch_label.equals("true")) {
+				try {
+					_alProbability.get(1).set(probabilityIndex(_alEvidenceStatus), d._dLower);
+				} catch (IndexOutOfBoundsException e) {
+					for (int i = 0; i < probabilityIndex(_alEvidenceStatus) - _alProbability.get(1).size(); i++)
+						_alProbability.get(1).add((Double) 0.0);
+				}
+			}
+			if (branch_label.equals("false")) {
+				try {
+					_alProbability.get(0).set(probabilityIndex(_alEvidenceStatus), d._dLower);
+				} catch (IndexOutOfBoundsException e) {
+					for (int i = 0; i < probabilityIndex(_alEvidenceStatus) - _alProbability.get(0).size(); i++)
+						_alProbability.get(0).add((Double) 0.0);
+				}
+			}
 			// ps.print("\n" + tab(level));
 			// ps.print((branch_label != null && branch_label.length() > 0 ? "(" + branch_label + " " : ""));
 			// ps.print("(" + d._dLower + ")");
