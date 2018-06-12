@@ -75,7 +75,7 @@ public class RDDL2Format {
 	public TreeMap<Pair, Integer> _var2observDD;
 	public TreeMap<String, ArrayList<Integer>> _act2rewardDD;
 	
-	public HashMap<String, Pair> _hmCPD;
+	public HashMap<String, Pair<List<String>, List<List<Double>>>> _hmCPD;
 
 	//public ArrayList<Integer> _reward;
 	public String _sTranslationType = UNKNOWN;
@@ -647,18 +647,21 @@ public class RDDL2Format {
 			pw.println();
 		}
 		
-		// for (String action_name : _hmActionMap.keySet()) {		
-		// 	exportPgmpyAction(action_name, curr_format, count);
-		//	break;
-		// }
+		// exportPgmpyAction(curr_format, count); -> create data member _hmCPD here 
 		
 		// Add edges: .add_edges_from()
-		/* for (String variable : _hmCPD.keySet()) {
-			for (String evidence : _hmCPD.get(variable).K1) {
-				pw.print edge;
+                pw.println(modelName + ".add_edges_from(["); 
+		for (String variable : _hmCPD.keySet()) {
+			for (String evidence : _hmCPD.get(variable)._o1) {
+				for(int i = 0; i < _i._nHorizon; i++){
+                                    int next = i++;
+                                    if(next != _i._nHorizon){
+                                        pw.println("(\'" + evidence + "_" + i + "\', \'" + variable + "_" + next + "\'),");
+                                    }
+                                }
 			}
-		}*/
-
+		}
+                
 		// Initial state (_0) -- finished
 		if (export_init_block) {
 			HashMap<String,Boolean> init_state_assign = new HashMap<String,Boolean>();
@@ -683,16 +686,32 @@ public class RDDL2Format {
 		}
 
 		// Actions : TabularCPDs
-		/* for (String variable : _hmCPD.keySet()) {
+		 for (String variable : _hmCPD.keySet()) {
 		 	for (int h = 0; h < _i._nHorizon; h++) {
-		 		String cpd = "cpd_" + state_name + "_" + h + " = TabularCPD (\'" + state_name + "_" + h + "\', 2, ";
-		 		cpd += _alProbability to String;
-		 		cpd += _alEvidence to String;
-		 		cpd += [2, 2, ..., 2] <- number of evidences. Each evidence has 2 possible values.
-		 		pw.println(cpd);
+                            int prev = h++; 
+                            if(prev != _i._nHorizon) {
+                                pw.print("cpd_" + variable + "_" + h + " = TabularCPD (\'" + variable + "_" + h + "\', 2, ");
+                                pw.print(_hmCPD.get(variable)._o2); 
+                                
+                                if(_hmCPD.get(variable)._o1 != null){
+                                    String evidence = "["; 
+                                    String eviCard = "["; 
+                                    for(String evid: _hmCPD.get(variable)._o1){
+                                        evidence = evidence + "\'" + evid + "_" + prev + "\', ";
+                                        eviCard = eviCard + "2, ";
+                                    }
+                                    evidence.substring(0, evidence.length() - 2);
+                                    evidence = evidence + "]"; 
+                                    
+                                    eviCard.substring(0, eviCard.length() - 2);
+                                    eviCard = eviCard + "]"; 
+                                    pw.print(", " + evidence + ", " + eviCard);
+                                }
+                                pw.println(");"); 
+                            }
 		 	}
-		 	pw.println();
-		}*/
+                    pw.println(); 
+		}
 		
 		// Add CPDs : .add_cpds() -- finished
 		pw.print(modelName + ".add_cpds(");
