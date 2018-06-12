@@ -13,6 +13,9 @@ import java.io.*;
 import java.util.*;
 
 import dd.discrete.ADD;
+import dd.discrete.ADDDNode;
+import dd.discrete.ADDINode;
+import dd.discrete.ADDNode;
 import dd.discrete.DD;
 
 import rddl.*;
@@ -176,7 +179,7 @@ public class RDDL2Format {
 		
 		// Strings interned so can test equality here
 		if (_sTranslationType == Pgmpy)
-			exportPgmpy(pw, false, false);
+			exportPgmpy(pw, true);
 		else if (_sTranslationType == SPUDD_ORIG)
 			exportSPUDD(pw, false, false);
 		else if (_sTranslationType == SPUDD_CURR || _sTranslationType == SPUDD_CURR_NOINIT)
@@ -584,45 +587,40 @@ public class RDDL2Format {
 		pw.println("\t)");
 	}
 	
-	public void exportPgmpy(PrintWriter pw, boolean curr_format, boolean allow_conc) {
-		exportPgmpy(pw, curr_format, allow_conc, true);
+	public void exportPgmpy(PrintWriter pw, boolean curr_format) {
+		// for now does not allow concurrent actions
+		exportPgmpy(pw, curr_format, true);
 	}
 		
-	public void exportPgmpy(PrintWriter pw, boolean curr_format, boolean allow_conc, boolean export_init_block) {
+	public void exportPgmpy(PrintWriter pw, boolean curr_format, boolean export_init_block) {
 		pw.println("# Automatically produced by RDDL2Pgmpy");
 		pw.println("# Pgmpy Bayesian Model for '" + _d._sDomainName + "." + _i._sName + "'");
 		pw.println("# variable_0 => variable = false; variable_1 => variable = true");
 		pw.println();
 		
 		boolean first;
+		int count;
 		int space_length;
 		
 		String modelName = _d._sDomainName + "_model";
 		pw.println(modelName + " = BayesianModel();");
 		pw.println();
 		
-		// State (and action variables) : .add_nodes_from() -- finished
+		// State : .add_nodes_from() -- finished
 		pw.print(modelName + ".add_nodes_from([");
 		space_length = (modelName + ".add_nodes_from([").length();
 		first = true;
+		count = 0;
 		for (int h = 0; h < _i._nHorizon; h++) {
 			for (String s : _alStateVars) {
 				if (first) {
 					pw.print("\'" + s + "_" + h + "\'");
 					first = false;
+					count ++;
 					continue;
 				}
 				pw.printf(",%n%" + space_length + "s\'" + s + "_" + h + "\'", "");
-			}
-			if (allow_conc) {
-				for (String a : _hmActionMap.keySet()) {
-					if (first) {
-						pw.print("\'" + a + "_" + h + "\'");
-						first = false;
-						continue;
-					}
-					pw.printf(",%n%" + space_length + "s\'" + a + "_" + h + "\'", "");
-				}
+				count++;
 			}
 		}
 		first = false;
@@ -647,7 +645,14 @@ public class RDDL2Format {
 			pw.println();
 		}
 		
+		HashMap<String, Pair<List<String>, List<List<Double>>>> _hmCPD = exportPgmpyAction(curr_format, count);
+		
 		// Add edges: .add_edges_from()
+		/* for (String variable : _hmCPD.keySet()) {
+			for (String evidence : _hmCPD.get(variable).K1) {
+				pw.print edge;
+			}
+		}*/
 
 		// Initial state (_0) -- finished
 		if (export_init_block) {
@@ -669,22 +674,24 @@ public class RDDL2Format {
 				else
 					pw.println("cpd_" + s + "_0 = TabularCPD (\'" + s + "\', 2, [[1.0], [0.0]]);");
 			}
+			pw.println();
 		}
-		pw.println();
 
 		// Actions : TabularCPDs
-/*		if (allow_conc) {
- *			exportSPUDDAction("<no action -- concurrent>", curr_format, pw);
- *		} else {
- *			for (String action_name : _hmActionMap.keySet()) {		
- *				exportSPUDDAction(action_name, curr_format, pw);
- *			}
- *		}
- */		
+		/* for (String variable : _hmCPD.keySet()) {
+		 	for (int h = 0; h < _i._nHorizon; h++) {
+		 		String cpd = "cpd_" + state_name + "_" + h + " = TabularCPD (\'" + state_name + "_" + h + "\', 2, ";
+		 		cpd += _alProbability to String;
+		 		cpd += _alEvidence to String;
+		 		cpd += [2, 2, ..., 2] <- number of evidences. Each evidence has 2 possible values.
+		 		pw.println(cpd);
+		 	}
+		 	pw.println();
+		}*/
 		
 		// Add CPDs : .add_cpds() -- finished
 		pw.print(modelName + ".add_cpds(");
-		space_length = (modelName + ".addcpds(").length();
+		space_length = (modelName + ".add_cpds(").length();
 		first = true;
 		for (int h = 0; h < _i._nHorizon; h++) {
 			for (String s : _alStateVars) {
@@ -701,6 +708,109 @@ public class RDDL2Format {
 		pw.println();
 	}
 
+	public HashMap<String, Pair<List<String>, List<List<Double>>>> exportPgmpyAction(boolean curr_format, int capacity) {
+		List<String> _alEvidence = new ArrayList<String>(0);
+		List<List<Double>> _alProbability = new ArrayList<List<Double>>(2);
+		String state_name = null;
+		HashMap<String, Pair<List<String>, List<List<Double>>>> _hmCPD = new HashMap(capacity);
+		
+		// reach a ADDDNode
+		// state_name = _hmID2VarName.get(gid)
+		// fill in _alProbability
+		// _hmCPD.put(state_name, new Pair(_alEvidence, _alProbability));
+		
+		return _hmCPD;
+		
+		// Code for exportSPUDDAction
+		/* pw.println("\naction " + 
+				(action_name.equals("<no action -- concurrent>") ? "concurrent_action" : action_name));
+		for (String s : _alStateVars) {
+			pw.print("\t" + s);
+			
+			// Build both halves of dual action diagram if curr_format
+			System.out.println("Getting: " + action_name + ", " + s);
+			int dd = _var2transDD.get(new Pair(action_name, s));
+			if (curr_format) {
+				
+				//System.out.println("Multiplying..." + dd + ", " + DD_ONE);
+				//_context.printNode(dd);
+				//_context.printNode(DD_ONE);
+				int dd_true  = _context.getVarNode(s + "'", 0d, 1d);
+				dd_true = _context.applyInt(dd_true, dd, ADD.ARITH_PROD);
+	
+				int dd_false = _context.getVarNode(s + "'", 1d, 0d);
+				//System.out.println("Multiplying..." + dd + ", " + DD_ONE);
+				//_context.printNode(dd);
+				//_context.printNode(DD_ONE);
+				int one_minus_dd = _context.applyInt(DD_ONE, dd, ADD.ARITH_MINUS);
+				dd_false = _context.applyInt(dd_false, one_minus_dd, ADD.ARITH_PROD);
+				
+				// Replace original DD with "dual action diagram" DD
+				dd = _context.applyInt(dd_true, dd_false, ADD.ARITH_SUM);
+			}
+	
+			_context.exportTree(dd, pw, curr_format, 2);
+			pw.println();
+		}
+		if (_alObservVars.size() > 0) {
+			pw.println("\tobserve ");
+			for (String o : _alObservVars) {
+				
+				Integer dd = _var2observDD.get(new Pair(action_name, o));
+				if (curr_format) {
+					//dd = _context.remapGIDsInt(dd, _hmPrimeRemap);
+				
+					int dd_true = _context.getVarNode(o, 0d, 1d); 
+					dd_true = _context.applyInt(dd_true, dd, ADD.ARITH_PROD);
+	
+					int dd_false = _context.getVarNode(o, 1d, 0d);
+					//System.out.println("Multiplying..." + dd + ", " + DD_ONE);
+					//_context.printNode(dd);
+					//_context.printNode(DD_ONE);
+					int one_minus_dd = _context.applyInt(DD_ONE, dd, ADD.ARITH_MINUS);
+					dd_false = _context.applyInt(dd_false, one_minus_dd, ADD.ARITH_PROD);
+					
+					// Replace original DD with "dual action diagram" DD
+					dd = _context.applyInt(dd_true, dd_false, ADD.ARITH_SUM);
+				}
+				
+				pw.print("\t\t" + o.substring(0,o.length()-1));
+				_context.exportTree(dd, pw, curr_format, 3);
+				pw.println();
+			}
+			pw.println("\tendobserve");
+		}
+
+		// SPUDD example for SysAdmin
+	    //cost [+ (m1 (down (-0.0))
+        //        (up (-2.0)))
+        //    (m2 (down (-0.0))
+        //        (up (-1.0)))
+        //    (m3 (down (-0.0))
+        //        (up (-1.0)))
+        //    (m4 (down (-0.0))
+        //        (up (-1.0)))
+        //    (2.5)]
+
+		// Always show action cost (can be zero)
+		// Reward is now fixed at zero
+		System.out.println(_act2rewardDD.keySet());
+		ArrayList<Integer> rewards = _act2rewardDD.get(action_name);
+		if (rewards.size() > 0) {
+			pw.print("\tcost [+ ");
+			for (int reward_dd : rewards) {
+				int cost_dd = _context.applyInt(_reward_context.getConstantNode(0d), reward_dd, DD.ARITH_MINUS);
+				//if (cost_dd != DD_ZERO) { // All functions are canonical 
+				//_context.getGraph(cost_dd).launchViewer();
+				_context.exportTree(cost_dd, pw, curr_format, 2);
+			}
+			//try {System.in.read();} catch (Exception e) {}
+			pw.println("\n\t]");
+			//}
+		}
+		pw.println("endaction");*/
+	}
+	
 	public void buildCPTs() throws Exception {
 
 		_var2transDD = new TreeMap<Pair,Integer>();
