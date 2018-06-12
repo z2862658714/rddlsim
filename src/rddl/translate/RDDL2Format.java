@@ -647,7 +647,10 @@ public class RDDL2Format {
 			pw.println();
 		}
 		
-		// exportPgmpyAction(curr_format, count);
+		// for (String action_name : _hmActionMap.keySet()) {		
+		// 	exportPgmpyAction(action_name, curr_format, count);
+		//	break;
+		// }
 		
 		// Add edges: .add_edges_from()
 		/* for (String variable : _hmCPD.keySet()) {
@@ -710,11 +713,11 @@ public class RDDL2Format {
 		pw.println();
 	}
 
-	public void exportPgmpyAction(boolean curr_format, int capacity) { // HashMap<String, Pair<List<String>, List<List<Double>>>>
-		List<String> _alEvidence = new ArrayList<String>();
-		List<List<Double>> _alProbability = new ArrayList<List<Double>>(2);
+	public void exportPgmpyAction(String action_name, boolean curr_format, int capacity) { // HashMap<String, Pair<List<String>, List<List<Double>>>>
+		ArrayList<String> _alEvidence = new ArrayList<String>();
+		ArrayList<Integer> _alEvidenceStatus = new ArrayList<Integer>();
+		ArrayList<List<Double>> _alProbability = new ArrayList<List<Double>>(2);
 		String state_name = null;
-		HashMap<String, Pair> _hmCPD = new HashMap(capacity);
 		
 		// reach a ADDDNode
 		// state_name = _hmID2VarName.get(gid)
@@ -724,13 +727,10 @@ public class RDDL2Format {
 		// _alPro
 		
 		// Code for exportSPUDDAction
-		/* pw.println("\naction " + 
-				(action_name.equals("<no action -- concurrent>") ? "concurrent_action" : action_name));
 		for (String s : _alStateVars) {
-			pw.print("\t" + s);
-			
+			state_name = s;
 			// Build both halves of dual action diagram if curr_format
-			System.out.println("Getting: " + action_name + ", " + s);
+			// System.out.println("Getting: " + action_name + ", " + s);
 			int dd = _var2transDD.get(new Pair(action_name, s));
 			if (curr_format) {
 				
@@ -750,12 +750,10 @@ public class RDDL2Format {
 				// Replace original DD with "dual action diagram" DD
 				dd = _context.applyInt(dd_true, dd_false, ADD.ARITH_SUM);
 			}
-	
-			_context.exportTree(dd, pw, curr_format, 2);
-			pw.println();
+			
+			exportTree(dd, curr_format, 2, _alEvidence, _alEvidenceStatus, _alProbability);
 		}
 		if (_alObservVars.size() > 0) {
-			pw.println("\tobserve ");
 			for (String o : _alObservVars) {
 				
 				Integer dd = _var2observDD.get(new Pair(action_name, o));
@@ -775,70 +773,55 @@ public class RDDL2Format {
 					// Replace original DD with "dual action diagram" DD
 					dd = _context.applyInt(dd_true, dd_false, ADD.ARITH_SUM);
 				}
-				
-				pw.print("\t\t" + o.substring(0,o.length()-1));
-				_context.exportTree(dd, pw, curr_format, 3);
-				pw.println();
+				exportTree(dd, curr_format, 3, _alEvidence, _alEvidenceStatus, _alProbability);
 			}
-			pw.println("\tendobserve");
 		}
-
-		// SPUDD example for SysAdmin
-	    //cost [+ (m1 (down (-0.0))
-        //        (up (-2.0)))
-        //    (m2 (down (-0.0))
-        //        (up (-1.0)))
-        //    (m3 (down (-0.0))
-        //        (up (-1.0)))
-        //    (m4 (down (-0.0))
-        //        (up (-1.0)))
-        //    (2.5)]
-
-		// Always show action cost (can be zero)
-		// Reward is now fixed at zero
-		System.out.println(_act2rewardDD.keySet());
-		ArrayList<Integer> rewards = _act2rewardDD.get(action_name);
-		if (rewards.size() > 0) {
-			pw.print("\tcost [+ ");
-			for (int reward_dd : rewards) {
-				int cost_dd = _context.applyInt(_reward_context.getConstantNode(0d), reward_dd, DD.ARITH_MINUS);
-				//if (cost_dd != DD_ZERO) { // All functions are canonical 
-				//_context.getGraph(cost_dd).launchViewer();
-				_context.exportTree(cost_dd, pw, curr_format, 2);
-			}
-			//try {System.in.read();} catch (Exception e) {}
-			pw.println("\n\t]");
-			//}
+	}
+	
+	public int probabilityIndex (int[] status, int length) {
+		int result = 0;
+		for (int i = 0; i < status.length; i++) {
+			result += status[i] * Math.pow(2, i);
 		}
-		pw.println("endaction");*/
+		return result;
 	}
 	
-	public void exportTree(int n, PrintWriter ps, boolean label_branches, List _alEvidence, List _alProbability) {
-		exportTree(n, ps, label_branches ? "" : null, 0, _alEvidence, _alProbability);
+	public void exportTree(int n, boolean label_branches, 
+			ArrayList<String> _alEvidence, ArrayList<Integer> _alEvidenceStatus, ArrayList<List<Double>> _alProbability) {
+		exportTree(n, label_branches ? "" : null, 0, _alEvidence, _alEvidenceStatus, _alProbability);
 	}
 	
-	public void exportTree(int n, PrintWriter ps, boolean label_branches, int level, List _alEvidence, List _alProbability) {
-		exportTree(n, ps, label_branches ? "" : null, level, _alEvidence, _alProbability);
+	public void exportTree(int n, boolean label_branches, int level, 
+			ArrayList<String> _alEvidence, ArrayList<Integer> _alEvidenceStatus, ArrayList<List<Double>> _alProbability) {
+		exportTree(n, label_branches ? "" : null, level, _alEvidence, _alEvidenceStatus, _alProbability);
 	}
 	
-	protected void exportTree(int n, PrintWriter ps, String branch_label, int level, List _alEvidence, List _alProbability) {
+	protected void exportTree(int n, String branch_label, int level, 
+			ArrayList<String> _alEvidence, ArrayList<Integer> _alEvidenceStatus, ArrayList<List<Double>> _alProbability) {
 
 		ADDNode cur = _context.getNode(n);
 
 		if (cur instanceof ADDINode) {
 			ADDINode i = (ADDINode) cur;
-			ps.print("\n" + tab(level) + 
-					(branch_label != null && branch_label.length() > 0 ? "(" + branch_label + " " : "") + 
-					"(" + _context._hmID2VarName.get(i._nTestVarID) + " ");
-			exportTree(i._nHigh, ps, branch_label != null ? "true" : null, level + 1);
-			exportTree(i._nLow, ps, branch_label != null ? "false" : null, level + 1);
-			ps.print(branch_label != null && branch_label.length() > 0 ? "))" : ")");
+			// ps.print("\n" + tab(level) + 
+			//		(branch_label != null && branch_label.length() > 0 ? "(" + branch_label + " " : "") + 
+			//		"(" + _context._hmID2VarName.get(i._nTestVarID) + " ");
+			_alEvidence.add((String) _context._hmID2VarName.get(i._nTestVarID));
+			@SuppressWarnings("unchecked")
+			ArrayList<Integer> _alEvidenceTrue = (ArrayList<Integer>) _alEvidenceStatus.clone();
+			_alEvidenceTrue.add((Integer) 1);
+			exportTree(i._nHigh, branch_label != null ? "true" : null, level + 1, _alEvidence, _alEvidenceTrue, _alProbability);
+			@SuppressWarnings("unchecked")
+			ArrayList<Integer> _alEvidenceFalse = (ArrayList<Integer>) _alEvidenceStatus.clone();
+			_alEvidenceFalse.add((Integer) 0);
+			exportTree(i._nLow, branch_label != null ? "false" : null, level + 1, _alEvidence, _alEvidenceFalse, _alProbability);
+			// ps.print(branch_label != null && branch_label.length() > 0 ? "))" : ")");
 		} else {
 			ADDDNode d = (ADDDNode) cur;
-			ps.print("\n" + tab(level));
-			ps.print((branch_label != null && branch_label.length() > 0 ? "(" + branch_label + " " : ""));
-			ps.print("(" + d._dLower + ")");
-			ps.print(branch_label != null && branch_label.length() > 0 ? ")" : "");
+			// ps.print("\n" + tab(level));
+			// ps.print((branch_label != null && branch_label.length() > 0 ? "(" + branch_label + " " : ""));
+			// ps.print("(" + d._dLower + ")");
+			// ps.print(branch_label != null && branch_label.length() > 0 ? ")" : "");
 		}
 	}
 
