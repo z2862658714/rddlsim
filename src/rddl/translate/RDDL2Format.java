@@ -74,6 +74,8 @@ public class RDDL2Format {
 	public TreeMap<Pair, Integer> _var2transDD;
 	public TreeMap<Pair, Integer> _var2observDD;
 	public TreeMap<String, ArrayList<Integer>> _act2rewardDD;
+	
+	public HashMap<String, Pair> _hmCPD;
 
 	//public ArrayList<Integer> _reward;
 	public String _sTranslationType = UNKNOWN;
@@ -645,7 +647,7 @@ public class RDDL2Format {
 			pw.println();
 		}
 		
-		HashMap<String, Pair<List<String>, List<List<Double>>>> _hmCPD = exportPgmpyAction(curr_format, count);
+		// exportPgmpyAction(curr_format, count);
 		
 		// Add edges: .add_edges_from()
 		/* for (String variable : _hmCPD.keySet()) {
@@ -708,18 +710,18 @@ public class RDDL2Format {
 		pw.println();
 	}
 
-	public HashMap<String, Pair<List<String>, List<List<Double>>>> exportPgmpyAction(boolean curr_format, int capacity) {
-		List<String> _alEvidence = new ArrayList<String>(0);
+	public void exportPgmpyAction(boolean curr_format, int capacity) { // HashMap<String, Pair<List<String>, List<List<Double>>>>
+		List<String> _alEvidence = new ArrayList<String>();
 		List<List<Double>> _alProbability = new ArrayList<List<Double>>(2);
 		String state_name = null;
-		HashMap<String, Pair<List<String>, List<List<Double>>>> _hmCPD = new HashMap(capacity);
+		HashMap<String, Pair> _hmCPD = new HashMap(capacity);
 		
 		// reach a ADDDNode
 		// state_name = _hmID2VarName.get(gid)
 		// fill in _alProbability
 		// _hmCPD.put(state_name, new Pair(_alEvidence, _alProbability));
-		
-		return _hmCPD;
+		// _alEvidence.clear()
+		// _alPro
 		
 		// Code for exportSPUDDAction
 		/* pw.println("\naction " + 
@@ -809,6 +811,42 @@ public class RDDL2Format {
 			//}
 		}
 		pw.println("endaction");*/
+	}
+	
+	public void exportTree(int n, PrintWriter ps, boolean label_branches, List _alEvidence, List _alProbability) {
+		exportTree(n, ps, label_branches ? "" : null, 0, _alEvidence, _alProbability);
+	}
+	
+	public void exportTree(int n, PrintWriter ps, boolean label_branches, int level, List _alEvidence, List _alProbability) {
+		exportTree(n, ps, label_branches ? "" : null, level, _alEvidence, _alProbability);
+	}
+	
+	protected void exportTree(int n, PrintWriter ps, String branch_label, int level, List _alEvidence, List _alProbability) {
+
+		ADDNode cur = _context.getNode(n);
+
+		if (cur instanceof ADDINode) {
+			ADDINode i = (ADDINode) cur;
+			ps.print("\n" + tab(level) + 
+					(branch_label != null && branch_label.length() > 0 ? "(" + branch_label + " " : "") + 
+					"(" + _context._hmID2VarName.get(i._nTestVarID) + " ");
+			exportTree(i._nHigh, ps, branch_label != null ? "true" : null, level + 1);
+			exportTree(i._nLow, ps, branch_label != null ? "false" : null, level + 1);
+			ps.print(branch_label != null && branch_label.length() > 0 ? "))" : ")");
+		} else {
+			ADDDNode d = (ADDDNode) cur;
+			ps.print("\n" + tab(level));
+			ps.print((branch_label != null && branch_label.length() > 0 ? "(" + branch_label + " " : ""));
+			ps.print("(" + d._dLower + ")");
+			ps.print(branch_label != null && branch_label.length() > 0 ? ")" : "");
+		}
+	}
+
+	public String tab(int len) {
+		StringBuffer sb = new StringBuffer();
+		for (int i = 0; i < len; i++, sb.append("\t"))
+			;
+		return sb.toString();
 	}
 	
 	public void buildCPTs() throws Exception {
