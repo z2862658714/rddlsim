@@ -631,6 +631,7 @@ public class RDDL2Format {
 		pw.println();
 		
 		// Observations (not used) -- finished
+		// TODO: may need to debug
 		if (_alObservVars.size() > 0) {
 			
 			pw.print("# observations = [");
@@ -648,14 +649,20 @@ public class RDDL2Format {
 			pw.println();
 		}
 		
+		// RDDL2Pgmpy does not support actions yet
+		// In this code, take a placeholder action to generate the ADD
+		// TODO: implement action support
 		String action_name = null;
 		for (String a : _hmActionMap.keySet()) {
 			action_name = a;
 			break;
 		}
+		
+		// create _hmCPD, which hashes each state variable to a TabularCPD
+		// exportPgmpyAction works in the same way as exportSPUDDAction
 		exportPgmpyAction(action_name, curr_format); //-> create data member _hmCPD here 
 		
-		// Add edges: .add_edges_from()
+		// Add edges: .add_edges_from() -- finished
         pw.print(modelName + ".add_edges_from([");
         space_length = (modelName + ".add_edges_from([").length();
         first = true;
@@ -699,7 +706,8 @@ public class RDDL2Format {
 			pw.println();
 		}
 
-		// Actions : TabularCPDs
+		// TabularCPDs -- finished
+		// TODO: implement action support
 		for (String variable : _hmCPD.keySet()) {
 			for (int h = 1; h < _i._nHorizon; h++) {
 				int prev = h - 1; 
@@ -722,7 +730,7 @@ public class RDDL2Format {
 					first = false;
 					evidence += "]";
 					eviCard += "]";
-					pw.print(", " + evidence + ", " + eviCard);
+					pw.print((evidence.equals("[]") ? "" : ", " + evidence) + (eviCard.equals("[]") ? "" : ", " + eviCard));
 				}
 				pw.println(");"); 
 			}
@@ -752,15 +760,15 @@ public class RDDL2Format {
 			// HashMap<String, Pair<List<String>, List<List<Double>>>>
 		String state_name;
 		
-		// reach a ADDDNode
-		// state_name = _hmID2VarName.get(gid)
-		// fill in _alProbability
+		// for each state variable
+		// set state_name
+		// initialize new ArrayLists
+		// complete ArrayLists using exportTree function
 		// _hmCPD.put(state_name, new Pair(_alEvidence, _alProbability));
-		// _alEvidence.clear()
-		// _alPro
 		
-		// Code for exportSPUDDAction
 		for (String s : _alStateVars) {
+			
+			// initialize new ArrayLists
 			state_name = s;
 			ArrayList<String> _alEvidence = new ArrayList<String>();
 			ArrayList<Integer> _alEvidenceStatus = new ArrayList<Integer>();
@@ -769,6 +777,7 @@ public class RDDL2Format {
 			ArrayList<List<Double>> _alProbability = new ArrayList<List<Double>>();
 			_alProbability.add(_alProbabilityFalse);
 			_alProbability.add(_alProbabilityTrue);
+			
 			// Build both halves of dual action diagram if curr_format
 			// System.out.println("Getting: " + action_name + ", " + s);
 			int dd = _var2transDD.get(new Pair(action_name, s));
@@ -790,9 +799,12 @@ public class RDDL2Format {
 				// Replace original DD with "dual action diagram" DD
 				dd = _context.applyInt(dd_true, dd_false, ADD.ARITH_SUM);
 			}
+			
 			exportTree(dd, curr_format, 2, _alEvidence, _alEvidenceStatus, _alProbability);
 			_hmCPD.put(state_name, new Pair(_alEvidence, _alProbability));
 		}
+		// observations not used
+		// TODO: may need to debug
 		if (_alObservVars.size() > 0) {
 			for (String o : _alObservVars) {
 				state_name = o;
@@ -822,6 +834,8 @@ public class RDDL2Format {
 	}
 	
 	public int probabilityIndex (ArrayList<Integer> status) {
+		// returns the index of the element in the probability List that should be modified
+		// based on the true/false status of the evidences
 		int result = 0;
 		for (int i = 0; i < status.size(); i++) {
 			result += status.get(i) * Math.pow(2, i);
@@ -846,30 +860,30 @@ public class RDDL2Format {
 
 		if (cur instanceof ADDINode) {
 			ADDINode i = (ADDINode) cur;
-			// ps.print("\n" + tab(level) + 
-			//		(branch_label != null && branch_label.length() > 0 ? "(" + branch_label + " " : "") + 
-			//		"(" + _context._hmID2VarName.get(i._nTestVarID) + " ");
+			// create copies of _alEvidenceStatus
 			@SuppressWarnings("unchecked")
 			ArrayList<Integer> _alEvidenceTrue = (ArrayList<Integer>) _alEvidenceStatus.clone();
 			@SuppressWarnings("unchecked")
 			ArrayList<Integer> _alEvidenceFalse = (ArrayList<Integer>) _alEvidenceStatus.clone();
 			if (!((String)_context._hmID2VarName.get(i._nTestVarID)).endsWith("\'")) {
+				// add evidence to ArrayList
 				_alEvidence.add((String) _context._hmID2VarName.get(i._nTestVarID));
 				_alEvidenceTrue.add((Integer) 1);
 				_alEvidenceFalse.add((Integer) 0);
 			}
 			exportTree(i._nHigh, branch_label != null ? "true" : null, level + 1, _alEvidence, _alEvidenceTrue, _alProbability);
 			exportTree(i._nLow, branch_label != null ? "false" : null, level + 1, _alEvidence, _alEvidenceFalse, _alProbability);
-			// ps.print(branch_label != null && branch_label.length() > 0 ? "))" : ")");
 		} else {
 			ADDDNode d = (ADDDNode) cur;
 			int index = probabilityIndex(_alEvidenceStatus);
 			if (branch_label.equals("true")) {
 				while  (index >= _alProbability.get(1).size()) {
-						_alProbability.get(1).add(- 1.0);
+					// IndexOutOfBoundsException
+					_alProbability.get(1).add(- 1.0); // placeholder element
 				}
 				_alProbability.get(1).set(index, d._dLower);
 				if (d._dLower == 0.5) {
+					// undo the omitted 0.5 probability
 					while (index >= _alProbability.get(0).size()) {
 						_alProbability.get(0).add(- 1.0);
 					}
@@ -878,20 +892,18 @@ public class RDDL2Format {
 			}
 			if (branch_label.equals("false")) {
 				while (index >= _alProbability.get(0).size()) {
-						_alProbability.get(0).add(- 1.0);
+					// IndexOutOfBoundsException
+					_alProbability.get(0).add(- 1.0); // placeholder element
 				}
 				_alProbability.get(0).set(index, d._dLower);
 				if (d._dLower == 0.5) {
+					// undo the omitted 0.5 probability
 					while  (index >= _alProbability.get(1).size()) {
 						_alProbability.get(1).add(- 1.0);
 					}
 					_alProbability.get(1).set(index, d._dLower);
 				}
 			}
-			// ps.print("\n" + tab(level));
-			// ps.print((branch_label != null && branch_label.length() > 0 ? "(" + branch_label + " " : ""));
-			// ps.print("(" + d._dLower + ")");
-			// ps.print(branch_label != null && branch_label.length() > 0 ? ")" : "");
 		}
 	}
 
