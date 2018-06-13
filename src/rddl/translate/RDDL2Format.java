@@ -648,7 +648,8 @@ public class RDDL2Format {
 		exportPgmpyAction("a", curr_format); //-> create data member _hmCPD here 
 		
 		// Add edges: .add_edges_from()
-        pw.print(modelName + ".add_edges_from(["); 
+        pw.print(modelName + ".add_edges_from([");
+        space_length = (modelName + ".add_edges_from([").length();
         first = true;
 		for (String variable : _hmCPD.keySet()) {
 			for (String evidence : _hmCPD.get(variable)._o1) {
@@ -659,7 +660,7 @@ public class RDDL2Format {
                 		first = false;
                 		continue;
                 	}
-                	pw.printf(",%n(\'" + evidence + "_" + i + "\', \'" + variable + "_" + next + "\')");
+                	pw.printf(",%n%" + space_length +"s(\'" + evidence + "_" + i + "\', \'" + variable + "_" + next + "\')", "");
 				}
 			}
 		}
@@ -840,33 +841,43 @@ public class RDDL2Format {
 			// ps.print("\n" + tab(level) + 
 			//		(branch_label != null && branch_label.length() > 0 ? "(" + branch_label + " " : "") + 
 			//		"(" + _context._hmID2VarName.get(i._nTestVarID) + " ");
-			if (((String)_context._hmID2VarName.get(i._nTestVarID)).endsWith("\'"))
-				_alEvidence.add((String) _context._hmID2VarName.get(i._nTestVarID));
 			@SuppressWarnings("unchecked")
 			ArrayList<Integer> _alEvidenceTrue = (ArrayList<Integer>) _alEvidenceStatus.clone();
-			_alEvidenceTrue.add((Integer) 1);
-			exportTree(i._nHigh, branch_label != null ? "true" : null, level + 1, _alEvidence, _alEvidenceTrue, _alProbability);
 			@SuppressWarnings("unchecked")
 			ArrayList<Integer> _alEvidenceFalse = (ArrayList<Integer>) _alEvidenceStatus.clone();
-			_alEvidenceFalse.add((Integer) 0);
+			if (!((String)_context._hmID2VarName.get(i._nTestVarID)).endsWith("\'")) {
+				_alEvidence.add((String) _context._hmID2VarName.get(i._nTestVarID));
+				_alEvidenceTrue.add((Integer) 1);
+				_alEvidenceFalse.add((Integer) 0);
+			}
+			exportTree(i._nHigh, branch_label != null ? "true" : null, level + 1, _alEvidence, _alEvidenceTrue, _alProbability);
 			exportTree(i._nLow, branch_label != null ? "false" : null, level + 1, _alEvidence, _alEvidenceFalse, _alProbability);
 			// ps.print(branch_label != null && branch_label.length() > 0 ? "))" : ")");
 		} else {
 			ADDDNode d = (ADDDNode) cur;
+			int index = probabilityIndex(_alEvidenceStatus);
 			if (branch_label.equals("true")) {
-				try {
-					_alProbability.get(1).set(probabilityIndex(_alEvidenceStatus), d._dLower);
-				} catch (IndexOutOfBoundsException e) {
-					for (int i = 0; i < probabilityIndex(_alEvidenceStatus) - _alProbability.get(1).size(); i++)
-						_alProbability.get(1).add((Double) 0.0);
+				while  (index >= _alProbability.get(1).size()) {
+						_alProbability.get(1).add(- 1.0);
+				}
+				_alProbability.get(1).set(index, d._dLower);
+				if (d._dLower == 0.5) {
+					while (index >= _alProbability.get(0).size()) {
+						_alProbability.get(0).add(- 1.0);
+					}
+					_alProbability.get(0).set(index, d._dLower);
 				}
 			}
 			if (branch_label.equals("false")) {
-				try {
-					_alProbability.get(0).set(probabilityIndex(_alEvidenceStatus), d._dLower);
-				} catch (IndexOutOfBoundsException e) {
-					for (int i = 0; i < probabilityIndex(_alEvidenceStatus) - _alProbability.get(0).size(); i++)
-						_alProbability.get(0).add((Double) 0.0);
+				while (index >= _alProbability.get(0).size()) {
+						_alProbability.get(0).add(- 1.0);
+				}
+				_alProbability.get(0).set(index, d._dLower);
+				if (d._dLower == 0.5) {
+					while  (index >= _alProbability.get(1).size()) {
+						_alProbability.get(1).add(- 1.0);
+					}
+					_alProbability.get(1).set(index, d._dLower);
 				}
 			}
 			// ps.print("\n" + tab(level));
