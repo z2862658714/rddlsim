@@ -129,7 +129,7 @@ public class RDDL2Format {
 		_filename = directory + separator + /*_d._sDomainName + "." +*/ _i._sName;
 		
 		if (_sTranslationType == Pgmpy) {
-			_filename = _filename + ".txt";
+			_filename = _filename + ".py";
 		} else if (_sTranslationType == PPDDL) {
 			if (!_d._bPartiallyObserved)
 				_filename = _filename + ".ppddl";
@@ -599,6 +599,9 @@ public class RDDL2Format {
 		pw.println("# Pgmpy Bayesian Model for '" + _d._sDomainName + "." + _i._sName + "'");
 		pw.println("# variable_0 => variable = false; variable_1 => variable = true");
 		pw.println();
+		pw.println("from pgmpy.models import BayesianModel");
+		pw.println("from pgmpy.factors.discrete import TabularCPD;");
+		pw.println();
 		
 		_hmCPD = new HashMap<String, Pair<ArrayList<String>, ArrayList<List<Double>>>>();
 		
@@ -645,7 +648,12 @@ public class RDDL2Format {
 			pw.println();
 		}
 		
-		exportPgmpyAction("a", curr_format); //-> create data member _hmCPD here 
+		String action_name = null;
+		for (String a : _hmActionMap.keySet()) {
+			action_name = a;
+			break;
+		}
+		exportPgmpyAction(action_name, curr_format); //-> create data member _hmCPD here 
 		
 		// Add edges: .add_edges_from()
         pw.print(modelName + ".add_edges_from([");
@@ -665,7 +673,7 @@ public class RDDL2Format {
 			}
 		}
 		first = false;
-		pw.println("];");
+		pw.println("]);");
 		pw.println();
                 
 		// Initial state (_0) -- finished
@@ -684,9 +692,9 @@ public class RDDL2Format {
 					bval = (Boolean)_state.getDefaultValue(p);
 				}
 				if (bval)
-					pw.println("cpd_" + s + "_0 = TabularCPD (\'" + s + "\', 2, [[0.0], [1.0]]);");
+					pw.println("cpd_" + s + "_0 = TabularCPD (\'" + s + "_0\', 2, [[0.0], [1.0]]);");
 				else
-					pw.println("cpd_" + s + "_0 = TabularCPD (\'" + s + "\', 2, [[1.0], [0.0]]);");
+					pw.println("cpd_" + s + "_0 = TabularCPD (\'" + s + "_0\', 2, [[1.0], [0.0]]);");
 			}
 			pw.println();
 		}

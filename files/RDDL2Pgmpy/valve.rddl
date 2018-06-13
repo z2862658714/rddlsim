@@ -1,4 +1,4 @@
-domain valve_domain {
+domain valve {
 
 	pvariables {
 		state-broken	: { state-fluent, bool, default = false };
@@ -22,7 +22,7 @@ domain valve_domain {
 }
 
 instance valve_inst {
-	domain = valve_domain;
+	domain = valve;
 	init-state {
 		state-broken = false;
 	};
