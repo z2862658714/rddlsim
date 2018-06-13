@@ -6,7 +6,7 @@ dir = os.path.abspath(os.path.dirname(__file__));
 filename = dir + '/valve_inst.py';
 exec(open(filename, 'r', -1, 'utf-8').read());
 
-inference = VariableElimination(valve_domain_model);
+inference = VariableElimination(valve_model);
 q1 = inference.query(variables = ['state_broken_2']);
 q2 = inference.query(variables = ['state_broken_2'], evidence = {'prev_state_observed_broken_3' : 1});
 q3 = inference.query(variables = ['state_broken_2'], evidence = {'prev_state_observed_broken_1' : 1, 'prev_state_observed_broken_2' : 0, 'prev_state_observed_broken_3' : 1});
